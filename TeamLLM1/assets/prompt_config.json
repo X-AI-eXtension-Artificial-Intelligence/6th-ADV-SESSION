@@ -1,0 +1,10 @@
+{
+  "llm_prompt_ver1": {
+    "description": "사용자 질문과 rag 문맥 기반 법률 답변 생성용",
+    "template": "[문맥]\n{rag_context}\n[질문]\n{question}\n[지시사항]\n위 문맥을 바탕으로 사용자의 질문에 대해 법률적인 관점에서 정리된 답변을 작성하세요. \n답변은 조문, 판례 등 명확한 근거가 있다면 포함하되, 없을 경우 일반적인 법적 해석을 기반으로 설명하십시오.\n\n답변:"
+  },
+  "retriever_instruction": {
+    "description": "instruction 기반 retriever 학습용",
+    "template": "Instruct: 사용자의 질문에 대해 관련된 법률 조문이나 판례가 포함된 문서를 검색하세요.\nQuery: {question}"
+  }
+}
