@@ -26,6 +26,7 @@
 │   ├── eval.py
 │   ├── metrics.py
 │   └── train.py
+|── .env.example
 ├── .env
 ├── .gitignore
 ├── README.md
