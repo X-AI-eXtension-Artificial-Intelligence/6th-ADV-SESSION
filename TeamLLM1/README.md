@@ -47,7 +47,6 @@ source venv/bin/activate
 # .env 파일 설정: .env.example을 복사하여 .env 파일을 만들고,
 # HUGGINGFACE_HUB_TOKEN, 모델 이름, 경로 등을 설정합니다.
 cp .env.example .env
-nano .env
 ```
 
 ### 2. 의존성 라이브러리 및 패키지 설치
