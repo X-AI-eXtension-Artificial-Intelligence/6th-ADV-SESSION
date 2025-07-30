@@ -1,5 +1,5 @@
 .env
-models/
-model/
+models/base_model/*
+models/service_model/*
 legal_chatbot.egg-info/
 venv/
