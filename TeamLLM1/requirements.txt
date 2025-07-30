@@ -1,0 +1,10 @@
+# Core ML
+torch>=1.13
+transformers>=4.35
+huggingface-hub
+
+# .env 파일 사용
+python-dotenv
+
+# 진행 상태 표시
+tqdm

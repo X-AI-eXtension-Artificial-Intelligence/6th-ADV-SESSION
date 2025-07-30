@@ -1,0 +1,5 @@
+.env
+models/
+model/
+legal_chatbot.egg-info/
+venv/
