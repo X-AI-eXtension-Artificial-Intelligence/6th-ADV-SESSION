@@ -5,7 +5,7 @@ import pandas as pd
 
 # === 경로 설정 ===
 IN_DIRS = ["TopicData/Training", "TopicData/Validation"]  # 입력 루트 폴더들
-OUT_DIR = "Dataset"                                   # 출력 폴더
+OUT_DIR = "Dataset/SFT"                                   # 출력 폴더
 OUT_PATH = os.path.join(OUT_DIR, "utterance_topic.csv")
 
 os.makedirs(OUT_DIR, exist_ok=True)                   # 출력 폴더 생성

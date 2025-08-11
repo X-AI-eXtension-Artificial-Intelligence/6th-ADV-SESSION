@@ -9,7 +9,7 @@ ROOT_DIRS = {
     "training": "RawData/Training",      # 학습 데이터 폴더
     "validation": "RawData/Validation"   # 검증 데이터 폴더
 }
-OUT_DIR = "Dataset"                      # 결과 저장 폴더
+OUT_DIR = "Dataset/SFT"                      # 결과 저장 폴더
 OUT_PATH = os.path.join(OUT_DIR, "utterance_sns.csv")
 
 os.makedirs(OUT_DIR, exist_ok=True)      # 결과 폴더 생성
