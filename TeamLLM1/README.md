@@ -90,3 +90,6 @@ python -m service.main
 ```
 
 해당 코드를 실행하면 기본적으로 http://localhost:20000에서 API가 실행됩니다.
+
+### 6. Streamlit 코드 실행
+service/inference/gradio_ui.py 이름 Streamlit.py 수정하고 Streamlit 코드 작성해주세요....
