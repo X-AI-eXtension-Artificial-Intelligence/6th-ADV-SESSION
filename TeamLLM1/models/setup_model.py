@@ -1,68 +1,115 @@
 import os
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from sentence_transformers import SentenceTransformer 
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+)
+from sentence_transformers import SentenceTransformer
 from huggingface_hub import login
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Hugging Face 토큰으로 로그인
-hf_token = os.getenv("HUGGINGFACE_HUB_TOKEN")
+# ---- ENV ----
+hf_token = os.getenv("HUGGINGFACE_TOKEN")
+base_dir = os.getenv("BASE_MODEL_DIR")
+retrieve_id = os.getenv("RETRIEVE_MODEL_NAME")
+rerank_id = os.getenv("RERANK_MODEL_NAME")
+generate_id = os.getenv("GENERATE_MODEL")
+generate_bool = os.getenv("GENERATE_MODEL_BOOL", "false").lower() == "true"
+
+if not all([base_dir, retrieve_id, rerank_id, generate_id]):
+    raise ValueError(
+        "환경변수(BASE_MODEL_DIR, RETRIEVE_MODEL_NAME, RERANK_MODEL_NAME, GENERATE_MODEL)를 확인하세요."
+    )
+
+# HF 로그인
 if hf_token:
-    login(token=hf_token)
+    try:
+        login(token=hf_token)
+    except Exception as e:
+        print(f"[경고] Hugging Face 로그인 실패: {e}")
 else:
-    print("Hugging Face 토큰이 없어 Gated Model 다운로드가 실패할 수 있습니다.")
+    print("[주의] HUGGINGFACE_TOKEN이 없어 Gated 모델 다운로드가 실패할 수 있습니다.")
 
 
-def download_embedding_model(model_id, save_path):
-    """SentenceTransformer 모델을 다운로드합니다."""
+def ensure_dir(p: str):
+    os.makedirs(p, exist_ok=True)
+
+
+def download_embedding_model(model_id: str, save_path: str):
     try:
-        print(f"Downloading embedding model: {model_id}")
-        model = SentenceTransformer(model_id, token=hf_token)
+        print(f"[임베딩] 다운로드 시작: {model_id}")
+        model = SentenceTransformer(model_id)
         model.save(save_path)
-        print(f"Embedding model saved to: {save_path}")
+        print(f"[임베딩] 저장 완료: {save_path}")
     except Exception as e:
-        print(f"Error downloading {model_id}: {e}")
+        print(f"[임베딩] 오류({model_id}): {e}")
 
 
-def download_llm_model(model_id, save_path):
-    """Causal LM 모델을 다운로드합니다."""
+def download_rerank_model(model_id: str, save_path: str):
     try:
-        print(f"Downloading LLM: {model_id}")
-        # trust_remote_code와 token 인자를 함께 사용
-        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True, token=hf_token)
-        model = AutoModelForCausalLM.from_pretrained(model_id, trust_remote_code=True, token=hf_token)
-        
-        model.save_pretrained(save_path)
-        tokenizer.save_pretrained(save_path)
-        print(f"LLM saved to: {save_path}")
+        print(f"[리랭크] 다운로드 시작: {model_id}")
+        tok = AutoTokenizer.from_pretrained(
+            model_id, trust_remote_code=True
+            )
+        mdl = AutoModelForSequenceClassification.from_pretrained(
+            model_id, trust_remote_code=True
+            )
+        tok.save_pretrained(save_path)
+        mdl.save_pretrained(save_path)
+        print(f"[리랭크] 저장 완료: {save_path}")
     except Exception as e:
-        print(f"Error downloading {model_id}: {e}")
+        print(f"[리랭크] 오류({model_id}): {e}")
+
+
+def download_generate_model(model_id: str, save_path: str):
+    try:
+        print(f"[생성] 다운로드 시작: {model_id}")
+        tok = AutoTokenizer.from_pretrained(
+            model_id, trust_remote_code=True
+        )
+        mdl = AutoModelForCausalLM.from_pretrained(
+            model_id, trust_remote_code=True
+        )
+        tok.save_pretrained(save_path)
+        mdl.save_pretrained(save_path)
+        print(f"[생성] 저장 완료: {save_path}")
+    except Exception as e:
+        print(f"[생성] 오류({model_id}): {e}")
 
 
 def download_model_files():
-    base_path = os.getenv("BASE_MODEL_DIR")
-    embedding_model_id = os.getenv("EMBEDDING_MODEL")
-    generate_model_id = os.getenv("GENERATE_MODEL")
-    
-    if not all([base_path, embedding_model_id, generate_model_id]):
-        raise ValueError("환경변수(BASE_MODEL_DIR, EMBEDDING_MODEL, GENERATE_MODEL)가 비어 있습니다.")
+    retrieve_path = os.path.join(base_dir, "retrieve")
+    rerank_path = os.path.join(base_dir, "rerank")
+    generate_path = os.path.join(base_dir, "generate")
 
-    embedding_path = os.path.join(base_path, "embedding_model")
-    generate_path = os.path.join(base_path, "generate_model")
+    ensure_dir(base_dir)
 
-    # 각 모델에 맞는 다운로드 함수 호출
-    if not os.path.exists(embedding_path):
-        print(embedding_path)
-        download_embedding_model(embedding_model_id, embedding_path)
+    # Retrieve (임베딩)
+    if not os.path.exists(retrieve_path) or not os.listdir(retrieve_path):
+        ensure_dir(retrieve_path)
+        download_embedding_model(retrieve_id, retrieve_path)
     else:
-        print(f"Embedding model already exists at: {embedding_path}")
+        print(f"[임베딩] 이미 존재: {retrieve_path}")
 
-    if not os.path.exists(generate_path):
-        print(generate_path)
-        #download_llm_model(generate_model_id, generate_path)
+    # Rerank (크로스인코더)
+    if not os.path.exists(rerank_path) or not os.listdir(rerank_path):
+        ensure_dir(rerank_path)
+        download_rerank_model(rerank_id, rerank_path)
     else:
-        print(f"LLM already exists at: {generate_path}")
+        print(f"[리랭크] 이미 존재: {rerank_path}")
+
+    # Generate (HF CausalLM only; BOOL 플래그로 제어)
+    if generate_bool:
+        if not os.path.exists(generate_path) or not os.listdir(generate_path):
+            ensure_dir(generate_path)
+            download_generate_model(generate_id, generate_path)
+        else:
+            print(f"[생성] 이미 존재: {generate_path}")
+    else:
+        print(f"[생성] GENERATE_MODEL_BOOL=False → 다운로드 스킵: {generate_id}")
+
 
 if __name__ == "__main__":
     download_model_files()

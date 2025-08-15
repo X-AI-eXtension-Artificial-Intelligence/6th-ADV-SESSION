@@ -1,5 +1,9 @@
 .env
-models/base_model/*
-models/service_model/*
+conversations/*
+data/raw/law_db.csv
+data/vector_db/*.pkl
+data/vector_db/*.index
+models/rerank/*
+models/retrieve/*
 legal_chatbot.egg-info/
 venv/
