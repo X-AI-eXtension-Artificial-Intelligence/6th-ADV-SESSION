@@ -25,3 +25,4 @@ openai
 # LangGraph
 langgraph
 langchain-core>=0.2
+langsmith>=0.1.95
