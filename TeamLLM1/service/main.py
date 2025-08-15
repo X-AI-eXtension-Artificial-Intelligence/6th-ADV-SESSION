@@ -31,4 +31,4 @@ def chat(req: ChatRequest):
     return ChatResponse(client_id=req.client_id, answer=out.answer or "")
 
 if __name__ == "__main__":
-    uvicorn.run("service.langgraph.main:app", host="0.0.0.0", port=20000, reload=True)
+    uvicorn.run("service.main:app", host="0.0.0.0", port=20000, reload=True)

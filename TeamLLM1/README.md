@@ -91,5 +91,12 @@ python -m service.main
 
 해당 코드를 실행하면 기본적으로 http://localhost:20000에서 API가 실행됩니다.
 
+만약 API 호출이 어렵다면 아래 코드를 실행하여 예시 답변을 받을 수 있습니다.
+```bash
+chcp 65001
+
+curl -X POST http://localhost:20000/chat -H "Content-Type: application/json" -d "{\"client_id\":\"name123\",\"key\":\"generate\",\"query\":\"상가 임대차 계약이 끝난 후 권리금 회수 방해 시 어떻게 해야 하나요?\",\"retrieved_docs\":[]}"
+```
+
 ### 6. Streamlit 코드 실행
 service/inference/gradio_ui.py 이름 Streamlit.py 수정하고 Streamlit 코드 작성해주세요....
