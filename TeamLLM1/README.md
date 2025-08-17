@@ -98,5 +98,14 @@ chcp 65001
 curl -X POST http://localhost:20000/chat -H "Content-Type: application/json" -d "{\"client_id\":\"name123\",\"key\":\"generate\",\"query\":\"상가 임대차 계약이 끝난 후 권리금 회수 방해 시 어떻게 해야 하나요?\",\"retrieved_docs\":[]}"
 ```
 
-### 6. Streamlit 코드 실행
-service/inference/gradio_ui.py 이름 Streamlit.py 수정하고 Streamlit 코드 작성해주세요....
+### 6. Streamlit 실행
+Streamlit을 통해 웹 UI로 질문을 입력하고 챗봇과 대화할 수 있습니다.
+FastAPI 서버가 활성화된 상태에서 새로운 터미널을 열고 아래 명령어를 실행합니다.
+
+```bash
+streamlit run service/interface/app.py
+```
+
+해당 코드를 실행하면 브라우저가 자동으로 열리며, 기본적으로 http://localhost:8501 에서 법률 챗봇 확인할 수 있습니다.
+
+FastAPI 서버가 실행 중이지 않으면 챗봇이 정상적으로 동작하지 않으므로, 반드시 5번 단계에서 서버를 먼저 실행해야 합니다.
