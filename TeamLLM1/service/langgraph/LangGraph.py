@@ -60,14 +60,14 @@ class LangRAGGraph:
                 return self._to_dict(st2)
             return s
 
-        def query_rewrite_node(s: Dict[str, Any]) -> Dict[str, Any]:
+        def retrieve_trained_with_weak_query_node(s: Dict[str, Any]) -> Dict[str, Any]:
             st = self._to_state(s)
-            st2 = self.node.query_rewrite(st)  # 현재 noop
+            st2 = self.node.retrieve_trained_with_weak_query(st)  # 현재 noop
             return self._to_dict(st2)
 
-        def retrieve_and_rerank_node(s: Dict[str, Any]) -> Dict[str, Any]:
+        def rerank_node(s: Dict[str, Any]) -> Dict[str, Any]:
             st = self._to_state(s)
-            st2 = self.node.retrieve_and_rerank(st)
+            st2 = self.node.rerank(st)
             return self._to_dict(st2)
 
         def generate_node(s: Dict[str, Any]) -> Dict[str, Any]:
@@ -85,8 +85,8 @@ class LangRAGGraph:
         # ---- build graph ----
         g.add_node("use_RAG", use_RAG_node)
         g.add_node("has_history", has_history_node)
-        g.add_node("query_rewrite", query_rewrite_node)
-        g.add_node("retrieve_and_rerank", retrieve_and_rerank_node)
+        g.add_node("retrieve_trained_with_weak_query", retrieve_trained_with_weak_query_node)
+        g.add_node("rerank", rerank_node)
         g.add_node("generate", generate_node)
 
         g.set_entry_point("use_RAG")
@@ -99,10 +99,10 @@ class LangRAGGraph:
         g.add_conditional_edges(
             "has_history",
             route_after_has_history,
-            {"continue": "query_rewrite", "end": END},
+            {"continue": "retrieve_trained_with_weak_query", "end": END},
         )
-        g.add_edge("query_rewrite", "retrieve_and_rerank")
-        g.add_edge("retrieve_and_rerank", "generate")
+        g.add_edge("retrieve_trained_with_weak_query", "rerank")
+        g.add_edge("rerank", "generate")
         g.add_edge("generate", END)
 
         return g
