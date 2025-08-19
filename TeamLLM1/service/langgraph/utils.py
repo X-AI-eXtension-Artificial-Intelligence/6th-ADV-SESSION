@@ -46,13 +46,6 @@ def _ensure_loaded():
         _bi_encoder = SentenceTransformer(RETRIEVE_MODEL_PATH)
     if _cross_encoder is None:
         _cross_encoder = CrossEncoder(CROSS_ENCODER_PATH)
-    # if _faiss_index is None:
-    #     _faiss_index = faiss.read_index(FAISS_INDEX_PATH)
-    # if _law_ids is None:
-    #     with open(LAW_IDS_PKL_PATH, "rb") as f:
-    #         _law_ids = pickle.load(f)
-    # if _law_df is None:
-    #     _law_df = pd.read_csv(LAW_DF_PATH)
 
 
 def _conversation_path(client_id: str) -> str:
