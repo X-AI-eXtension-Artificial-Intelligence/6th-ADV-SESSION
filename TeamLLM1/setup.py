@@ -14,6 +14,7 @@ setup(
         "numpy",
         "faiss-cpu",             # 기본 CPU 버전
         "tqdm",
+        "gdown"
     ],
     entry_points={
         "console_scripts": [

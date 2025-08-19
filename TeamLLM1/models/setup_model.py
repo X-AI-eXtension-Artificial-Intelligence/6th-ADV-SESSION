@@ -1,5 +1,5 @@
 import os
-import requests
+import gdown
 from transformers import (
     AutoTokenizer,
     AutoModelForCausalLM,
@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ---- ENV ----
-model_url = "https://drive.google.com/uc?export=download&id=1Cbhm5GfJzWdpCh18jqcLa0no9n7LmQ6i"
+soft_prompt_id = "1Cbhm5GfJzWdpCh18jqcLa0no9n7LmQ6i"
 hf_token = os.getenv("HUGGINGFACE_TOKEN")
 base_dir = os.getenv("BASE_MODEL_DIR")
 retrieve_id = os.getenv("RETRIEVE_MODEL_NAME")
@@ -64,19 +64,16 @@ def download_rerank_model(model_id: str, save_path: str):
     except Exception as e:
         print(f"[리랭크] 오류({model_id}): {e}")
 
-def download_soft_prompt_model(save_path: str):
-    os.makedirs(save_path, exist_ok=True)
 
-    print(f"Downloading model from: {model_url}")
-    response = requests.get(model_url, stream=True)
+def download_soft_prompt_model(save_path: str, file_id: str):
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-    if response.status_code == 200:
-        with open(save_path, "wb") as f:
-            for chunk in response.iter_content(1024 * 1024):
-                f.write(chunk)
-        print(f"✅ Model downloaded and saved to: {save_path}")
-    else:
-        raise Exception(f"❌ Failed to download file, status code: {response.status_code}")
+    url = f"https://drive.google.com/uc?id={file_id}"
+    print(f"Downloading model from: {url}")
+
+    gdown.download(url, save_path, quiet=False, fuzzy=True)
+    print(f"✅ Model downloaded and saved to: {save_path}")
+
 
 def download_generate_model(model_id: str, save_path: str):
     try:
@@ -98,14 +95,18 @@ def download_model_files():
     retrieve_path = os.path.join(base_dir, "retrieve")
     rerank_path = os.path.join(base_dir, "rerank")
     generate_path = os.path.join(base_dir, "generate")
-    soft_prompt_path = os.path.join(base_dir, "train_retriever_result", "bge-m3-contrastive-01", "model.safetensors")
+    soft_prompt_path = os.path.join(
+        base_dir, "train_retriever_result", "bge-m3-contrastive-01", "model.safetensors"
+    )
 
     ensure_dir(base_dir)
 
     # soft prompt
     if not os.path.exists(soft_prompt_path):
-        ensure_dir(os.path.dirname(soft_prompt_path))
-        download_soft_prompt_model(save_path=soft_prompt_path)
+        download_soft_prompt_model(
+            save_path=soft_prompt_path,
+            file_id=soft_prompt_id
+        )
     else:
         print("✅ soft_prompt 모델 이미 존재")
 
