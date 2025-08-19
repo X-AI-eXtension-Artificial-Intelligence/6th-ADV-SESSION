@@ -13,7 +13,7 @@ python-dotenv
 # IO / utils
 pandas
 tqdm
-
+gdown
 # API & Web
 fastapi
 uvicorn[standard]
