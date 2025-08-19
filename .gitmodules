@@ -1,0 +1,3 @@
+[submodule "TeamLLM1/SPTAR"]
+	path = TeamLLM1/SPTAR
+	url = https://github.com/Minn-ji/SPTAR.git
