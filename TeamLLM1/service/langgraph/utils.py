@@ -3,12 +3,18 @@ import os
 import pickle
 import pandas as pd
 import faiss
+import torch
+import json
 import numpy as np
 from typing import Any, Dict, List, Optional, Tuple, Union
 from dotenv import load_dotenv
+import time, hashlib, tempfile, shutil
+from rank_bm25 import BM25Okapi
+from transformers import AutoTokenizer
 from sentence_transformers import SentenceTransformer, CrossEncoder
 from openai import OpenAI
 from service.langgraph.prompt import SYSTEM_LAWQA, build_user_lawqa
+
 
 load_dotenv()
 
@@ -40,13 +46,13 @@ def _ensure_loaded():
         _bi_encoder = SentenceTransformer(RETRIEVE_MODEL_PATH)
     if _cross_encoder is None:
         _cross_encoder = CrossEncoder(CROSS_ENCODER_PATH)
-    if _faiss_index is None:
-        _faiss_index = faiss.read_index(FAISS_INDEX_PATH)
-    if _law_ids is None:
-        with open(LAW_IDS_PKL_PATH, "rb") as f:
-            _law_ids = pickle.load(f)
-    if _law_df is None:
-        _law_df = pd.read_csv(LAW_DF_PATH)
+    # if _faiss_index is None:
+    #     _faiss_index = faiss.read_index(FAISS_INDEX_PATH)
+    # if _law_ids is None:
+    #     with open(LAW_IDS_PKL_PATH, "rb") as f:
+    #         _law_ids = pickle.load(f)
+    # if _law_df is None:
+    #     _law_df = pd.read_csv(LAW_DF_PATH)
 
 
 def _conversation_path(client_id: str) -> str:
@@ -99,7 +105,217 @@ def _call_openai(messages: List[Dict[str, str]], temperature: float = 0.0) -> st
     )
     return (resp.choices[0].message.content or "").strip()
 
+# 검색
+def _search(query: str, k: int, handle: Dict[str, Any]):
+    m = handle["method"]; docs = handle["docs"]
+    if m == "bm25":
+        tok = handle["tokenizer"]; bm25 = handle["bm25"]
+        q_tokens = tok.tokenize(query)
+        scores = bm25.get_scores(q_tokens)
+        idx = np.argsort(scores)[::-1][:k]
+        return [(docs[i], float(scores[i])) for i in idx]
+    if m == "dense":
+        model = handle["dense_model"]; emb = handle["docs_embeddings"]
+        qv = model.encode([query], convert_to_numpy=True, normalize_embeddings=True)[0].astype("float32")
+        sims = emb @ qv
+        idx = np.argsort(sims)[::-1][:k]
+        return [(docs[i], float(sims[i])) for i in idx]
+    if m == "faiss":
+        model = handle["dense_model"]; index = handle["faiss_index"]
+        qv = model.encode([query], convert_to_numpy=True, normalize_embeddings=True).astype("float32")
+        D, I = index.search(qv, k)
+        return [(docs[int(i)], float(D[0, j])) for j, i in enumerate(I[0])]
+    raise ValueError("unknown method in handle")
+class PrebuiltIndexNotFound(Exception): ...
+class ArtifactMissing(Exception): ...
 
+def _safe_makedirs(p: str): os.makedirs(p, exist_ok=True)
+
+def _atomic_write_bytes(dst: str, data: bytes):
+    d = os.path.dirname(dst); _safe_makedirs(d)
+    fd, tmp = tempfile.mkstemp(dir=d)
+    try:
+        with os.fdopen(fd, "wb", buffering=0) as f:
+            f.write(data); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, dst)
+    except Exception:
+        try: os.remove(tmp)
+        finally: raise
+
+def _save_json(path: str, obj: Any):
+    _atomic_write_bytes(path, json.dumps(obj, ensure_ascii=False, indent=2).encode("utf-8"))
+
+def _load_json(path: str) -> Any:
+    if not os.path.exists(path): raise FileNotFoundError(path)
+    with open(path, "r", encoding="utf-8") as f: return json.load(f)
+
+def _save_numpy_atomic(path: str, arr: np.ndarray):
+    d = os.path.dirname(path); _safe_makedirs(d)
+    fd, tmp = tempfile.mkstemp(dir=d)
+    try:
+        with os.fdopen(fd, "wb", buffering=0) as f:
+            np.save(f, arr); f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except Exception:
+        try: os.remove(tmp)
+        finally: raise
+
+def _load_numpy(path: str) -> np.ndarray:
+    if not os.path.exists(path): raise FileNotFoundError(path)
+    return np.load(path)
+
+def _save_faiss(path: str, index: faiss.Index):
+    _safe_makedirs(os.path.dirname(path)); faiss.write_index(index, path)
+
+def _load_faiss(path: str) -> faiss.Index:
+    if not os.path.exists(path): raise FileNotFoundError(path)
+    return faiss.read_index(path)
+
+# 코퍼스 키: 문서+instruction만 반영
+def _hash_corpus(docs: List[str], instruction: bool) -> str:
+    h = hashlib.sha256()
+    h.update(b"inst1" if instruction else b"inst0")
+    for d in docs:
+        h.update(b"\x1e"); h.update(d.encode("utf-8"))
+    return h.hexdigest()[:16]
+
+def _paths_corpus(store_dir: str, corpus_key: str) -> Dict[str, str]:
+    root = os.path.join(store_dir, corpus_key)
+    return {
+        "root": root,
+        "corpus": os.path.join(root, "corpus.json"),
+        "corpus_config": os.path.join(root, "corpus_config.json"),
+        "bm25_tokens": os.path.join(root, "bm25_tokens.json"),
+        "variants_dir": os.path.join(root, "variants"),
+    }
+
+def _paths_variant(store_dir: str, corpus_key: str, variant: str) -> Dict[str, str]:
+    vd = os.path.join(store_dir, corpus_key, "variants", variant)
+    return {
+        "dir": vd,
+        "config": os.path.join(vd, "config.json"),
+        "dense_npy": os.path.join(vd, "dense_emb.npy"),
+        "faiss_index": os.path.join(vd, "faiss.index"),
+    }
+
+# 임베딩 저장
+def build_and_save_index(
+    *,
+    docs: List[str],
+    instruction: bool,
+    variant: str,                 # ex) "bge-m3" | "sbert" | "other"
+    embed_model_name: str,        # ex) "BAAI/bge-m3", "sentence-transformers/all-MiniLM-L6-v2", .
+    method: str,                  # "dense" | "faiss" | "bm25"
+    store_dir: str = "data/vector_db",
+    corpus_key: Optional[str] = None,   # 미지정 시 자동 생성
+    overwrite_variant: bool = False,    # 같은 variant 덮어쓸지
+    build_bm25_once: bool = False,      # BM25 토큰도 함께 만들고 싶으면 True
+) -> str:
+    # instruction 프리픽스 적용
+    _docs = [f"Document: {d}" for d in docs] if instruction else list(docs)
+    corpus_key = corpus_key or _hash_corpus(_docs, instruction)
+
+    PC = _paths_corpus(store_dir, corpus_key)
+    PV = _paths_variant(store_dir, corpus_key, variant)
+
+    # 코퍼스 메타/문서 저장(없으면)
+    _safe_makedirs(PC["root"])
+    if not os.path.exists(PC["corpus"]):
+        _save_json(PC["corpus"], _docs)
+        _save_json(PC["corpus_config"], {
+            "instruction": instruction,
+            "created_at": int(time.time()),
+            "version": 1
+        })
+
+    # BM25 토큰 생성(옵션, 중복 방지)
+    if build_bm25_once and not os.path.exists(PC["bm25_tokens"]):
+        tok = AutoTokenizer.from_pretrained(embed_model_name)
+        tokenized = [tok.tokenize(d) for d in _docs]
+        _save_json(PC["bm25_tokens"], tokenized)
+
+    # 변종 생성
+    if (os.path.exists(PV["config"]) or os.path.exists(PV["dense_npy"]) or os.path.exists(PV["faiss_index"])) and not overwrite_variant:
+        return corpus_key  # 이미 있음
+
+    _safe_makedirs(PV["dir"])
+
+    if method == "bm25":
+        # 변종에 별도 파일은 없음(코퍼스 공용 bm25_tokens 사용)
+        _save_json(PV["config"], {
+            "variant": variant, "embed_model_name": embed_model_name,
+            "method": "bm25", "created_at": int(time.time())
+        })
+        return corpus_key
+
+    if method not in {"dense", "faiss"}:
+        raise ValueError("method must be one of {'bm25','dense','faiss'}")
+
+    model = SentenceTransformer(embed_model_name)
+    emb = model.encode(_docs, convert_to_numpy=True, normalize_embeddings=True).astype("float32")
+    _save_numpy_atomic(PV["dense_npy"], emb)
+
+    if method == "faiss":
+        dim = emb.shape[1]
+        index = faiss.IndexFlatIP(dim)
+        index.add(emb)
+        _save_faiss(PV["faiss_index"], index)
+
+    _save_json(PV["config"], {
+        "variant": variant,
+        "embed_model_name": embed_model_name,
+        "method": method,
+        "dim": int(emb.shape[1]) if method in {"dense","faiss"} else None,
+        "created_at": int(time.time())
+    })
+    return corpus_key
+
+def _load_index(
+    *,
+    store_dir: str,
+    corpus_key: str,
+    variant: str,
+    use_gpu_for_faiss: bool = True
+) -> Dict[str, Any]:
+    PC = _paths_corpus(store_dir, corpus_key)
+    PV = _paths_variant(store_dir, corpus_key, variant)
+    if not os.path.exists(PC["corpus"]):
+        raise PrebuiltIndexNotFound(f"Corpus not found: {PC['root']}")
+
+    docs = _load_json(PC["corpus"])
+    if not os.path.exists(PV["config"]):
+        raise PrebuiltIndexNotFound(f"Variant not found: {PV['dir']}")
+
+    vcfg = _load_json(PV["config"])
+    method = vcfg["method"]
+
+    if method == "bm25":
+        if not os.path.exists(PC["bm25_tokens"]):
+            raise ArtifactMissing("bm25_tokens.json missing for corpus")
+        tokens = _load_json(PC["bm25_tokens"])
+        tokenizer = AutoTokenizer.from_pretrained(vcfg["embed_model_name"])
+        bm25 = BM25Okapi(tokens)
+        return {"method": "bm25", "docs": docs, "bm25": bm25, "tokenizer": tokenizer}
+
+    if method == "dense":
+        if not os.path.exists(PV["dense_npy"]):
+            raise ArtifactMissing("dense_emb.npy missing for variant")
+        emb = _load_numpy(PV["dense_npy"]).astype("float32")
+        model = SentenceTransformer(vcfg["embed_model_name"])
+        return {"method": "dense", "docs": docs, "docs_embeddings": emb, "dense_model": model}
+
+    if method == "faiss":
+        if not (os.path.exists(PV["dense_npy"]) and os.path.exists(PV["faiss_index"])):
+            raise ArtifactMissing("faiss.index or dense_emb.npy missing for variant")
+        emb = _load_numpy(PV["dense_npy"]).astype("float32")
+        index = _load_faiss(PV["faiss_index"])  # CPU
+        if use_gpu_for_faiss and torch.cuda.is_available():
+            res = faiss.StandardGpuResources()
+            index = faiss.index_cpu_to_gpu(res, 0, index)
+        model = SentenceTransformer(vcfg["embed_model_name"])
+        return {"method": "faiss", "docs": docs, "docs_embeddings": emb, "dense_model": model, "faiss_index": index}
+
+    raise ValueError(f"unknown method in variant config: {method}")
 # ---------------- 외부 공개 함수 ----------------
 def use_RAG(query: str) -> bool:
     """법률 지식 필요 여부 판단"""
@@ -148,27 +364,40 @@ def has_history(client_id: str, query: str, conversation: Optional[List[Dict[str
     return _call_openai(messages, temperature=0.0).lower() == "true"
 
 
-def query_rewrite():
-    return None
+def retrieve_trained_with_weak_query(query: str, retrieve_k: int = 15) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+    """재작성 ---> 새롭게 만들어진 weak query로 학습된 임베딩 모델 기반 retriever 후 리랭크"""
+    corpus_key = "corpus-generated-train"
+    variant = "bge-m3@faiss"
+    use_gpu_for_faiss = False
 
+    index_setting = _load_index(store_dir="data/vector_db", corpus_key=corpus_key, variant=variant,
+                               use_gpu_for_faiss=use_gpu_for_faiss)
+    if 'bge' in variant:
+        query = f"Query: {query}"
+    candidates = _search(query, k=retrieve_k, handle=index_setting)  # [15개의 문서]
+    candidates = [('Document', c[0].replace('Document: ', '')) for c in candidates]
+    ce_inputs = [[query, passage] for (_title, passage) in candidates]
 
-def retrieve_and_rerank(query: str, retrieve_k: int = 15, top_k: int = 3) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
+    return candidates, ce_inputs
+
+def rerank(candidates: List, ce_inputs: List, top_k: int = 3) -> Tuple[List[Tuple[str, str]], List[Tuple[str, str]]]:
     """retrieve_k개 검색 → CrossEncoder로 rerank → top_k 반환"""
     _ensure_loaded()
-    q_emb = _bi_encoder.encode([query], convert_to_numpy=True)
-    if q_emb.ndim == 1:
-        q_emb = q_emb.reshape(1, -1)
-    q_emb = _l2_normalize(q_emb)
-
-    D, I = _faiss_index.search(q_emb, retrieve_k)
-    faiss_indices = I[0].tolist()
-
-    candidates = []
-    for idx in faiss_indices:
-        row = _law_df.iloc[_law_ids[idx]]
-        candidates.append((str(row["법령_조문"]), str(row["법령_텍스트"])))
-
-    ce_inputs = [[query, passage] for (_title, passage) in candidates]
+    # q_emb = _bi_encoder.encode([query], convert_to_numpy=True)
+    # if q_emb.ndim == 1:
+    #     q_emb = q_emb.reshape(1, -1)
+    # q_emb = _l2_normalize(q_emb)
+    #
+    # D, I = _faiss_index.search(q_emb, retrieve_k)
+    # faiss_indices = I[0].tolist()
+    #
+    # # candidates = []
+    # # for idx in faiss_indices:
+    # #     row = _law_df.iloc[_law_ids[idx]]
+    # #     candidates.append((str(row["법령_조문"]), str(row["법령_텍스트"])))
+    #
+    # ce_inputs = [[query, passage] for (_title, passage) in candidates]
+    print('ce_inputs 이거 잘받는 거 맞음? ', ce_inputs )
     scores = _cross_encoder.predict(ce_inputs)
     ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
 

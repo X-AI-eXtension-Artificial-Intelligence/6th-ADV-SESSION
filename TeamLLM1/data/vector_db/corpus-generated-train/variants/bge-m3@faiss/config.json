@@ -1,0 +1,7 @@
+{
+  "variant": "bge-m3",
+  "embed_model_name": "models/train_retriever_result/bge-m3-contrastive-01",
+  "method": "faiss",
+  "dim": 1024,
+  "created_at": 1755338129
+}

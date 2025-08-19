@@ -1,5 +1,5 @@
 # state.py
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from pydantic import BaseModel
 
 class GraphState(BaseModel):
@@ -7,6 +7,8 @@ class GraphState(BaseModel):
     query: str
     retrieved_docs: Optional[List[str]] = None
     answer: Optional[str] = None
+    ce_inputs: Optional[List[List[str]]] = None      # [[query, passage], ...]
+    candidates: Optional[List[Tuple[str, str]]] = None  # [(title, text), ...]
 
 
 class ChatRequest(BaseModel):

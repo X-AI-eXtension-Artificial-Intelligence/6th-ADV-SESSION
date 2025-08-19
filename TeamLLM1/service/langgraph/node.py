@@ -3,10 +3,11 @@ from service.langgraph.state import GraphState
 from service.langgraph.utils import (
     use_RAG as _use_RAG,
     has_history as _has_history,
-    query_rewrite as _query_rewrite,
-    retrieve_and_rerank as _retrieve_and_rerank,
+    retrieve_trained_with_weak_query as _retrieve_trained_with_weak_query,
+    rerank as _rerank,
     generate as _generate,
     get_conversation as _get_conversation,
+
 )
 
 
@@ -51,7 +52,7 @@ class Node:
         conversation = _get_conversation(state.client_id)
         ok = _has_history(state.client_id, state.query, conversation)
         return ok
-    
+
 
     def answer_history(self, state: GraphState) -> GraphState:
         conversation = _get_conversation(state.client_id)
@@ -67,19 +68,30 @@ class Node:
             )
 
 
-    def query_rewrite(self, state: GraphState) -> GraphState:
+    def retrieve_trained_with_weak_query(self, state: GraphState) -> GraphState:
         """
-        - 현재 사양상 비활성(None 반환). 향후 리라이트 도입 시 state.query를 업데이트.
+        - 현재 사양상 비활성(None 반환). 향후 리라이트 도입 시 soft_prompt tuning된 검색기로 retrieve 후 rerank까지 적용
         """
-        return state
+        print('retrieve_trained_with_weak_query')
+        candidates, ce_inputs = _retrieve_trained_with_weak_query(state.query, retrieve_k=self.retrieve_k,)
+
+        return GraphState(
+            client_id=state.client_id,
+            query=state.query,
+            retrieved_docs=state.retrieved_docs,
+            ce_inputs=ce_inputs,
+            candidates=candidates,
+            answer=state.answer,
+        )
 
 
-    def retrieve_and_rerank(self, state: GraphState) -> GraphState:
+    def rerank(self, state: GraphState) -> GraphState:
+        print('rerank')
         """
         - retrieve_k개 검색 → CrossEncoder 재순위 → top_k 문서의 '본문'만 state.retrieved_docs(List[str])에 저장
         """
-        _, reranked_topk = _retrieve_and_rerank(
-            state.query, retrieve_k=self.retrieve_k, top_k=self.top_k
+        _, reranked_topk = _rerank(
+            candidates=state.ce_inputs, ce_inputs=state.candidates, top_k=self.top_k
         )
         # reranked_topk: List[Tuple[title, text]] 형태를 본문(text)으로 투영
         docs: List[str] = [t[1] for t in reranked_topk] if reranked_topk else []
@@ -89,7 +101,6 @@ class Node:
             retrieved_docs=docs,
             answer=state.answer,
         )
-
 
     def generate(self, state: GraphState) -> GraphState:
         """
