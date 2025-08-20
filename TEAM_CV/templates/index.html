@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>KMU Smart Parking Monitor</title>
+<style>
+ * { margin: 0; padding: 0; box-sizing: border-box; }
+ :root {
+   --primary-blue: #004F9F;
+   --accent-orange: #F3953F;
+   --light-blue: #A1DAF8;
+   --green: #95C23D;
+   --dark-gray: #575756;
+   --yellow: #FFCE44;
+   --text-black: #1a1a1a;
+   --bg-white: #ffffff;
+   --light-gray: #f8f9fa;
+   --border-color: #e9ecef;
+   --success-green: #28a745;
+
+   /* 하단 카드 통일 색상 (보라) */
+   --sub-purple: #7D5BFF;
+ }
+
+ body { 
+   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+   background: var(--bg-white);
+   color: var(--text-black);
+   line-height: 1.6;
+ }
+
+ .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+ header { display: flex; align-items: center; gap: 20px; margin-bottom: 32px; padding: 24px 0; border-bottom: 2px solid var(--light-gray); }
+ .logo { width: 80px; height: 80px; background: var(--bg-white); border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); overflow: hidden; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+ .logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 11px; }
+
+ .header-text h1 { font-size: 2.4rem; font-weight: 700; color: var(--text-black); margin-bottom: 4px; }
+ .header-text .kmu { color: var(--primary-blue); }
+ .subtitle { font-size: 1rem; color: var(--dark-gray); font-weight: 400; }
+
+ .dashboard { display: grid; grid-template-columns: 1fr 380px; gap: 24px; margin-bottom: 24px; }
+
+ .main-panel, .control-panel { background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+
+ /* 상단 3개 카드 */
+ .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+ .stats-grid .stat-card:nth-child(1) { border-left: 4px solid var(--green); }
+ .stats-grid .stat-card:nth-child(2) { border-left: 4px solid var(--accent-orange); }
+ .stats-grid .stat-card:nth-child(3) { border-left: 4px solid var(--primary-blue); }
+
+ /* 하단 4개 카드 (구역별 요약) - 보라색 통일 & 작게 */
+ .substats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; }
+ .substats-grid .stat-card {
+   border-left: 3px solid var(--sub-purple);
+   padding: 12px;                 
+   border-radius: 10px;
+ }
+ .substats-grid .stat-number { font-size: 1.4rem; } 
+ .substats-grid .stat-label  { font-size: 0.78rem; }
+
+ .stat-card { background: var(--light-gray); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; text-align: center; transition: all 0.3s ease; }
+ .stat-number { font-size: 2rem; font-weight: 700; margin-bottom: 6px; color: var(--text-black); }
+ .stat-label { font-size: 0.9rem; color: var(--dark-gray); font-weight: 500; }
+
+ .section-title { font-size: 1.3rem; font-weight: 600; color: var(--text-black); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+
+ .floorplan-container { background: var(--light-gray); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+ .floorplan { width: 100%; max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-white); }
+
+ .upload-section { margin-bottom: 28px; }
+ .upload-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+ .upload-card { background: var(--light-gray); border: 2px dashed var(--border-color); border-radius: 12px; padding: 16px; text-align: center; transition: all 0.3s ease; cursor: pointer; position: relative; min-height: 90px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+ .upload-card:hover { border-color: var(--primary-blue); background: #f0f7ff; }
+ .upload-card.selected { border-color: var(--success-green); border-style: solid; background: #f0fff4; }
+ .upload-card input { display: none; }
+ .upload-label { font-weight: 600; color: var(--text-black); margin-bottom: 6px; font-size: 0.9rem; }
+ .upload-hint { font-size: 0.75rem; color: var(--dark-gray); text-align: center; word-break: break-word; line-height: 1.3; }
+
+ .controls { display: flex; gap: 12px; margin-bottom: 28px; }
+ .btn { flex: 1; padding: 14px 20px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+ .btn-primary { background: var(--primary-blue); color: white; }
+
+ .btn.btn-primary {
+   font-size: 0.8rem;    /* 기존 0.95rem → 더 작게 */
+   padding: 10px 14px;   /* 버튼 높이도 살짝 줄임 */
+ }
+ .btn.btn-primary span {
+   font-size: 1rem;      /* 아이콘 크기 그대로 */
+ }
+
+ .btn-primary:hover { background: #003d7a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,79,159,0.3); }
+ .btn-secondary { background: var(--light-gray); color: var(--text-black); border: 1px solid var(--border-color); }
+ .btn-secondary:hover { background: #e9ecef; }
+
+ .status-indicator { display: flex; align-items: center; gap: 12px; padding: 16px 20px; background: var(--light-gray); border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 28px; }
+ .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--dark-gray); flex-shrink: 0; }
+ .status-dot.idle { background: var(--dark-gray); }
+ .status-dot.running { background: var(--green); animation: pulse 2s infinite; }
+ @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(1.1); } }
+ .status-text { font-weight: 500; color: var(--text-black); }
+
+ .system-info { background: var(--light-gray); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; }
+ .system-info h4 { color: var(--text-black); margin-bottom: 16px; font-size: 1rem; font-weight: 600; }
+ .info-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.9rem; color: var(--dark-gray); }
+
+ .streams-section { background: var(--bg-white); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+ .streams-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+ .stream-card { background: var(--light-gray); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; transition: all 0.3s ease; }
+ .stream-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+ .stream-header { background: var(--primary-blue); color: white; padding: 14px 18px; font-weight: 600; font-size: 0.9rem; }
+ .stream-container { position: relative; width: 100%; height: 0; padding-bottom: 56.25%; background: var(--bg-white); }
+ .stream-img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; background: var(--light-gray); }
+
+ .json-panel { background: var(--text-black); color: #e2e8f0; padding: 0; border-radius: 12px; margin-top: 24px; font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.85rem; overflow: auto; max-height: 320px; border: 1px solid var(--border-color); }
+ .json-panel pre { margin: 0; padding: 24px; white-space: pre; }
+
+ @media (max-width: 1200px) { .dashboard { grid-template-columns: 1fr; } }
+ @media (max-width: 768px) {
+   .container { padding: 16px; }
+   header { flex-direction: column; text-align: center; gap: 16px; }
+   .header-text h1 { font-size: 2rem; }
+   .upload-grid, .streams-grid, .stats-grid, .substats-grid { grid-template-columns: 1fr; }
+   .controls { flex-direction: column; }
+   .stream-container { padding-bottom: 75%; }
+ }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <img src="static/assets/logo.jpg" alt="국민대학교 로고">
+      </div>
+      <div class="header-text">
+        <h1><span class="kmu">KMU</span> Smart Parking Monitor</h1>
+        <p class="subtitle">국민대학교 지능형 주차장 모니터링 시스템</p>
+      </div>
+    </header>
+
+    <div class="dashboard">
+      <div class="main-panel">
+        <!-- 전체 요약 -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="totalSpots">24</div>
+            <div class="stat-label">총 주차공간</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="emptySpots">--</div>
+            <div class="stat-label">빈 공간(전체)</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="occupancy">--%</div>
+            <div class="stat-label">점유율(전체)</div>
+          </div>
+        </div>
+
+        <!-- 구역별 요약 (하단 4개: 보라 통일 + 축소) -->
+        <div class="substats-grid">
+          <div class="stat-card">
+            <div class="stat-number" id="b226Empty">--</div>
+            <div class="stat-label">B2 26 빈 공간</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="b226Occ">--%</div>
+            <div class="stat-label">B2 26 점유율</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="b227Empty">--</div>
+            <div class="stat-label">B2 27 빈 공간</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number" id="b227Occ">--%</div>
+            <div class="stat-label">B2 27 점유율</div>
+          </div>
+        </div>
+
+        <div class="floorplan-container">
+          <h3 class="section-title"><span>🗺️</span> B2 주차장 현황도</h3>
+          <img id="fp" class="floorplan" src="/render?t=" alt="주차장 플로어플랜" />
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <h3 class="section-title"><span>⚙️</span> 시스템 제어</h3>
+        
+        <div class="upload-section">
+          <h4 style="margin-bottom: 16px; color: var(--text-black); font-weight: 600;">CCTV 영상 업로드</h4>
+          <div class="upload-grid">
+            <div class="upload-card" onclick="document.getElementById('cam0').click()">
+              <div class="upload-label">📹 Camera 1</div>
+              <div class="upload-hint">B2 26-2</div>
+              <input type="file" id="cam0" accept="video/*"/>
+            </div>
+            <div class="upload-card" onclick="document.getElementById('cam1').click()">
+              <div class="upload-label">📹 Camera 2</div>
+              <div class="upload-hint">B2 26-1</div>
+              <input type="file" id="cam1" accept="video/*"/>
+            </div>
+            <div class="upload-card" onclick="document.getElementById('cam2').click()">
+              <div class="upload-label">📹 Camera 3</div>
+              <div class="upload-hint">B2 27-2</div>
+              <input type="file" id="cam2" accept="video/*"/>
+            </div>
+            <div class="upload-card" onclick="document.getElementById('cam3').click()">
+              <div class="upload-label">📹 Camera 4</div>
+              <div class="upload-hint">B2 27-1</div>
+              <input type="file" id="cam3" accept="video/*"/>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn-primary" onclick="start()"><span>▶️</span> 모니터링 시작</button>
+          <button class="btn btn-secondary" onclick="stop()"><span>⏹️</span> 정지</button>
+        </div>
+
+        <div class="status-indicator">
+          <div class="status-dot idle" id="statusDot"></div>
+          <span class="status-text" id="status">시스템 대기 중</span>
+        </div>
+
+        <div class="system-info">
+          <h4>시스템 정보</h4>
+          <div class="info-item"><span>🤖</span><span>YOLO 모델: 공유 인스턴스</span></div>
+          <div class="info-item"><span>📊</span><span>프레임 스킵: 7프레임</span></div>
+          <div class="info-item"><span>⚡</span><span>처리 모드: CPU 최적화</span></div>
+          <div class="info-item"><span>🎯</span><span>검출 정확도: 실시간</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="streams-section">
+      <h3 class="section-title"><span>📹</span> CCTV 실시간 탐지</h3>
+      <div class="streams-grid">
+        <div class="stream-card">
+          <div class="stream-header">Camera 1 (B2 26-2)</div>
+          <div class="stream-container"><img class="stream-img" id="s0" src="/stream/cam0" alt="Camera 1" /></div>
+        </div>
+        <div class="stream-card">
+          <div class="stream-header">Camera 2 (B2 26-1)</div>
+          <div class="stream-container"><img class="stream-img" id="s1" src="/stream/cam1" alt="Camera 2" /></div>
+        </div>
+        <div class="stream-card">
+          <div class="stream-header">Camera 3 (B2 27-2)</div>
+          <div class="stream-container"><img class="stream-img" id="s2" src="/stream/cam2" alt="Camera 3" /></div>
+        </div>
+        <div class="stream-card">
+          <div class="stream-header">Camera 4 (B2 27-1)</div>
+          <div class="stream-container"><img class="stream-img" id="s3" src="/stream/cam3" alt="Camera 4" /></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="json-panel" id="json">
+      <pre id="jsonPre">시스템 상태 데이터가 여기에 실시간으로 표시됩니다...</pre>
+    </div>
+  </div>
+
+<script>
+let timer = null;
+
+// 파일 선택 시 시각적 피드백
+document.querySelectorAll('input[type="file"]').forEach(input => {
+  input.addEventListener('change', function(e) {
+    const card = e.target.closest('.upload-card');
+    const hintElement = card.querySelector('.upload-hint');
+    if (e.target.files.length > 0) {
+      const fileName = e.target.files[0].name;
+      const truncatedName = fileName.length > 25 ? fileName.substring(0, 22) + '...' : fileName;
+      card.classList.add('selected');
+      hintElement.innerHTML = `✅ ${truncatedName}`;
+    } else {
+      card.classList.remove('selected');
+      const cameraNumber = e.target.id.replace('cam', '');
+      const zones = ['입구', '중앙', '우측', '출구'];
+      hintElement.textContent = `${zones[cameraNumber]} 구역 영상 선택`;
+    }
+  });
+});
+
+function updateStatus(text, isRunning = false) {
+  const statusEl = document.getElementById('status');
+  const dotEl = document.getElementById('statusDot');
+  statusEl.textContent = text;
+  dotEl.className = `status-dot ${isRunning ? 'running' : 'idle'}`;
+}
+
+function updateStats(data) {
+  // 전체
+  const overall = (data.summary && data.summary.overall) ? data.summary.overall : null;
+  if (overall) {
+    document.getElementById('emptySpots').textContent = overall.empty;
+    document.getElementById('occupancy').textContent = overall.occupancy + '%';
+  } else {
+    let totalEmpty = 0, totalSlots = 0;
+    if (data.regions) {
+      data.regions.forEach(region => {
+        region.slots.forEach(slot => {
+          totalSlots++;
+          if (slot.state === 'empty') totalEmpty++;
+        });
+      });
+    }
+    const occupancy = totalSlots > 0 ? Math.round(((totalSlots - totalEmpty) / totalSlots) * 100) : 0;
+    document.getElementById('emptySpots').textContent = totalEmpty;
+    document.getElementById('occupancy').textContent = occupancy + '%';
+  }
+
+  // 구역별
+  const b226 = data.summary && data.summary["B2 26"] ? data.summary["B2 26"] : null;
+  const b227 = data.summary && data.summary["B2 27"] ? data.summary["B2 27"] : null;
+  if (b226) {
+    document.getElementById('b226Empty').textContent = b226.empty;
+    document.getElementById('b226Occ').textContent = b226.occupancy + '%';
+  }
+  if (b227) {
+    document.getElementById('b227Empty').textContent = b227.empty;
+    document.getElementById('b227Occ').textContent = b227.occupancy + '%';
+  }
+}
+
+function start(){
+  const f0 = document.getElementById('cam0').files[0];
+  const f1 = document.getElementById('cam1').files[0];
+  const f2 = document.getElementById('cam2').files[0];
+  const f3 = document.getElementById('cam3').files[0];
+  if(!f0||!f1||!f2||!f3){ 
+    alert('모든 카메라 영상을 선택해주세요.'); 
+    return; 
+  }
+  updateStatus('시스템 초기화 중...', true);
+  const fd = new FormData();
+  fd.append('cam0', f0); fd.append('cam1', f1); fd.append('cam2', f2); fd.append('cam3', f3);
+  fetch('/upload', {method:'POST', body: fd})
+    .then(r=>r.json())
+    .then(_=>{
+      updateStatus('실시간 모니터링 중', true);
+      if(timer) clearInterval(timer);
+      timer = setInterval(()=>{
+        const img = document.getElementById('fp');
+        img.src = '/render?t=' + Date.now();
+        fetch('/state')
+          .then(r=>r.json())
+          .then(data=>{
+            updateStats(data);
+            document.getElementById('jsonPre').textContent = JSON.stringify(data, null, 2);
+          })
+          .catch(err => console.error('상태 업데이트 실패:', err));
+      }, 1200);
+    })
+    .catch(err => {
+      console.error('업로드 실패:', err);
+      updateStatus('업로드 실패 - 다시 시도해주세요', false);
+    });
+}
+
+function stop(){
+  fetch('/stop', {method:'POST'})
+    .then(()=>{
+      if(timer) clearInterval(timer); 
+      timer=null;
+      updateStatus('모니터링 정지됨', false);
+    })
+    .catch(err => { console.error('정지 실패:', err); });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('fp').src = '/render?t=' + Date.now();
+  updateStatus('시스템 대기 중', false);
+});
+</script>
+</body></html>
