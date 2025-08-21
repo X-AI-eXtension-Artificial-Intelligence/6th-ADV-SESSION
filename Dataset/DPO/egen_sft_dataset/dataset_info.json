@@ -1,0 +1,58 @@
+{
+  "builder_name": "csv",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "csv",
+  "dataset_size": 6162073,
+  "description": "",
+  "download_checksums": {
+    "/content/drive/MyDrive/Colab Notebooks/XAI/ADV/dataset/DPO/dpo_dataset_egen_0814.csv": {
+      "num_bytes": 5943311,
+      "checksum": null
+    }
+  },
+  "download_size": 5943311,
+  "features": {
+    "prompt": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "chosen": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "rejected": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "label": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "text_length": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "completion": {
+      "dtype": "string",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 12105384,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 6162073,
+      "num_examples": 16392,
+      "dataset_name": "csv"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
