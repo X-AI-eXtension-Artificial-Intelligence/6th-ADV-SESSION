@@ -1,7 +1,10 @@
 import streamlit as st
 import requests
-
-API_URL = "http://localhost:20000/chat"
+import os
+from dotenv import load_dotenv
+load_dotenv()
+ip_name = os.getenv("ALLOWED_HOST")
+API_URL = f"http://{ip_name}:20000/chat"
 
 st.set_page_config(page_title="Legal RAG Chatbot", page_icon="⚖️", layout="wide")
 

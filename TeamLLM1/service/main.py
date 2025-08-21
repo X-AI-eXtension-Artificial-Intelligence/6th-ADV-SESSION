@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Header
 from service.langgraph.state import ChatRequest, ChatResponse, GraphState
 from service.langgraph.node import Node
@@ -5,6 +7,8 @@ from service.langgraph.utils import save_conversation
 from service.langgraph.LangGraph import LangRAGGraph  # 위 파일
 import uvicorn
 from langsmith import traceable, tracing_context
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI(title="LangGraph RAG API", version="1.0.0")
 
@@ -44,4 +48,5 @@ def chat(req: ChatRequest,
     return ChatResponse(client_id=req.client_id, answer=out.answer or "")
 
 if __name__ == "__main__":
-    uvicorn.run("service.main:app", host="0.0.0.0", port=20000, reload=True)
+    ip_name = os.getenv("ALLOWED_HOST")
+    uvicorn.run("service.main:app", host=ip_name, port=20000, reload=True)
