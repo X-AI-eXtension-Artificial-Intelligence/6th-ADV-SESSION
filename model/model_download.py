@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 
 repo_id   = "rtzr/ko-gemma-2-9b-it"
-base_dir  = "/ko-gemma-2-9b-it"  # 저장 폴더
+base_dir  = "ko-gemma-2-9b-it"  # 저장 폴더
 cache_dir = base_dir                                      # 캐시를 저장 폴더와 동일하게
 
 Path(base_dir).mkdir(parents=True, exist_ok=True)
