@@ -32,7 +32,7 @@
 │   ├── dpo_data.json
 │   └── eval_data.json
 ├── model/
-│   ├── base/              # Ko-GEMMA 1.3B 기반 모델
+│   ├── base/              # rtzr/ko-gemma-2-9b-it
 │   ├── egen_model/
 │   └── teto_model/
 ├── training/
