@@ -9,7 +9,7 @@
 
 | 발표 PPT | 시연 영상 |
 |:--:|:--:|
-| [📄 PPT 보기](https://drive.google.com/file/d/1mW0Gg9x27R2f40_2LKrDH4HgadimJ7mm/view?usp=drive_link) | [▶️ 데모 영상 보기](https://drive.google.com/file/d/1ADwswQV0MpZN6jnY7WBH0CkOGnRecYXw/view?usp=drive_link) |
+| [📄 PPT 보기](https://drive.google.com/file/d/1mW0Gg9x27R2f40_2LKrDH4HgadimJ7mm/view?usp=drive_link) | [▶️ 데모 영상 보기](https://youtu.be/xyw9bLTycKI) |
 
 ---
 
