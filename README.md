@@ -1,6 +1,6 @@
 # 🌟 에테모 — 에겐/테토 페르소나 챗봇 구현 프로젝트
 
-> **2025 XAI-ADV Session LLM 2 Team**
+> **2025 XAI-ADV Session LLM 2 Team**\
 > *“How would Estrogen or Testosterone answer this question?”*
 
 ---
