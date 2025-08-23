@@ -31,7 +31,7 @@
 │   ├── sft_data.csv
 │   ├── dpo_data.json
 │   └── eval_data.json
-├── Dataset/                  # 데이터 전처리 및 분할
+├── Dataset/
 │   ├── SFT
 │   └── DPO
 ├── model/
