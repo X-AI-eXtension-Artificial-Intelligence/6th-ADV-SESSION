@@ -46,6 +46,6 @@
 │   ├── demo.py
 │   └── judge_eval.py
 ├── eval/
-│   ├── human_eval_googleform/
-│   └── llm_as_judge_result.csv
+│   ├── llm_as_judge
+│   └── human_evaluation
 └── README.md
