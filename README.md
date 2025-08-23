@@ -36,11 +36,10 @@
 │   └── DPO
 ├── model/
 │   ├── base/              # rtzr/ko-gemma-2-9b-it
-│   ├── egen_model/
-│   ├── egen_model/
-│   ├── egen_model/
-│   ├── egen_model/
-│   └── teto_model/
+│   ├── dpo_output_egen/
+│   ├── dpo_output_teto/
+│   ├── dpo_only_output_egen/
+│   └── dpo_only_output_teto/
 ├── training/
 │   ├── train_sft.py
 │   ├── train_dpo.py
