@@ -37,6 +37,9 @@
 ├── model/
 │   ├── base/              # rtzr/ko-gemma-2-9b-it
 │   ├── egen_model/
+│   ├── egen_model/
+│   ├── egen_model/
+│   ├── egen_model/
 │   └── teto_model/
 ├── training/
 │   ├── train_sft.py
