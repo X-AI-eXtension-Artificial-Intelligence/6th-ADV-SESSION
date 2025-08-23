@@ -43,8 +43,7 @@
 │   ├── train_dpo.py
 │   └── config/
 ├── inference/
-│   ├── demo.py
-│   └── judge_eval.py
+│   └── inference.ipynb
 ├── eval/
 │   ├── llm_as_judge
 │   └── human_evaluation
