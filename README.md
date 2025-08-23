@@ -29,7 +29,7 @@
 │   └── Koclip_finetuning.py      #Training
 ├── Text2image Retireval/
 │   ├── Vectordb_upsert.py      #Pinecone VectorDB 구성
-│   └── Search_item.py      #벡터DB내 상품 검색
+│   └── Search_item.py      #VectorDB 내 상품 검색
 ├── UI/
 │   └── STT_to_Gradio.py
 └── README.md
